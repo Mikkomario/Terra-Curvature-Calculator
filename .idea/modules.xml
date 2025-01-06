@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../Utopia-Scala/Firmament/Firmament.iml" filepath="$PROJECT_DIR$/../Utopia-Scala/Firmament/Firmament.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../Utopia-Scala/Flow/Flow.iml" filepath="$PROJECT_DIR$/../Utopia-Scala/Flow/Flow.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../Utopia-Scala/Genesis/Genesis.iml" filepath="$PROJECT_DIR$/../Utopia-Scala/Genesis/Genesis.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../Utopia-Scala/Paradigm/Paradigm.iml" filepath="$PROJECT_DIR$/../Utopia-Scala/Paradigm/Paradigm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../Utopia-Scala/Reach/Reach.iml" filepath="$PROJECT_DIR$/../Utopia-Scala/Reach/Reach.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../Utopia-Scala/Terra/Terra.iml" filepath="$PROJECT_DIR$/../Utopia-Scala/Terra/Terra.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Terra-Curvature-Calculator.iml" filepath="$PROJECT_DIR$/Terra-Curvature-Calculator.iml" />
+    </modules>
+  </component>
+</project>
