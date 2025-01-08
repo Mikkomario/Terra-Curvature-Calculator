@@ -1,19 +1,25 @@
 package vf.terra.calc.view.vc
 
+import utopia.firmament.context.color.VariableColorContext
 import utopia.firmament.context.text.StaticTextContext
 import utopia.firmament.localization.LocalString.stringToLocal
 import utopia.firmament.localization.{DisplayFunction, LocalizedString}
 import utopia.firmament.model.enumeration.StackLayout.Leading
+import utopia.firmament.model.stack.{StackLength, StackSize}
+import utopia.firmament.model.stack.LengthExtensions._
 import utopia.flow.collection.immutable.Pair
+import utopia.genesis.image.Image
 import utopia.paradigm.color.ColorRole
 import utopia.paradigm.color.ColorShade.Light
 import utopia.paradigm.measurement.DistanceExtensions._
 import utopia.paradigm.measurement.{Distance, MetricScale}
+import utopia.paradigm.shape.shape2d.vector.size.Size
 import utopia.reach.component.factory.FromContextComponentFactoryFactory.Ccff
 import utopia.reach.component.factory.Mixed
 import utopia.reach.component.factory.contextual.TextContextualFactory
 import utopia.reach.component.hierarchy.ComponentHierarchy
 import utopia.reach.component.input.selection.RadioButtonGroup
+import utopia.reach.component.label.image.ViewImageLabel
 import utopia.reach.component.label.text.{TextLabel, ViewTextLabel}
 import utopia.reach.component.template.{ReachComponentLike, ReachComponentWrapper}
 import utopia.reach.container.multi.{SegmentGroup, Stack}
@@ -21,6 +27,7 @@ import utopia.reach.container.wrapper.AlignFrame
 import utopia.terra.controller.coordinate.GlobeMath
 import utopia.terra.controller.coordinate.GlobeMath.HiddenHeightResults
 import utopia.terra.model.world.sphere.SpherePoint
+import vf.terra.calc.controller.visual.VisualizeHiddenHeight
 import vf.terra.calc.model.enumeration.DistanceUnitType
 import vf.terra.calc.model.enumeration.DistanceUnitType.{Imperial, Metric}
 import vf.terra.calc.model.enumeration.EntityType.{Observer, Target}
@@ -76,48 +83,73 @@ class CalculatorView(hierarchy: ComponentHierarchy, context: StaticTextContext) 
 		val observer = factories(EntityInputView)(Observer, unitTypeP)
 		val target = factories(EntityInputView)(Target, unitTypeP)
 		
-		// 4. Results:
-		// A vertical left-aligned stack with:
-		//      1. Distance to horizon
-		//      2. Distance to target
-		//      3. Target hidden height
-		//      4. Target visible height
+		// 4. Results: [Visualization, text]
+		// TODO: Image should have magins / framing
+		// TODO: Make image slightly bigger and give it a background color
+		// TODO: Change results BG
 		val results = factories(AlignFrame).left.withBackground(ColorRole.Gray, Light).build(Stack) { stackF =>
-			stackF.related.leading.build(Stack) { stackF =>
-				// Prepares the computation and the pointers
-				val resultsP = observer.locationPointer
-					.mergeWith(target.locationPointer, target.heightPointer) { (observer, target, targetHeight) =>
-						observer.flatMap { observer =>
-							target.map { target => GlobeMath.calculateHiddenHeight(observer, target, targetHeight) }
-						}
-					}
-				
-				// Prepares factories for constructing the result labels
-				val rowF = stackF.related.row
-				val segmentGroup = SegmentGroup.rowsWithLayouts(Leading, Leading)
-				def resultLine(label: LocalizedString)(extractValue: HiddenHeightResults => Distance) = {
-					rowF.buildSegmented(Mixed, segmentGroup) { factories =>
-						val titleLabel = factories.next()(TextLabel)(label)
-						val valueLabel = factories.next()(ViewTextLabel)(resultsP,
-							DisplayFunction.noLocalization[Option[HiddenHeightResults]] {
-								case Some(results) => resultToString(extractValue(results), unitTypeP.value)
-								case None => "---"
-							})
-						
-						Pair(titleLabel, valueLabel) -> valueLabel
+			// Prepares the computation and the pointers
+			val resultsP = observer.locationPointer
+				.mergeWith(target.locationPointer, target.heightPointer) { (observer, target, targetHeight) =>
+					observer.flatMap { observer =>
+						target.map { target => GlobeMath.calculateHiddenHeight(observer, target, targetHeight) }
 					}
 				}
-				// Creates the result labels
-				val horizonLine = resultLine("Horizon distance:") { _.distanceToHorizon }
-				val targetLine = resultLine("Target distance:") { _.distanceToTarget }
-				val hiddenLine = resultLine("Hidden:") { _.hiddenLength }
-				val visibleLine = resultLine("Visible:") { _.visibleLength }
-				val lines = Vector(horizonLine, targetLine, hiddenLine, visibleLine)
+			
+			stackF.centeredRow.build(Mixed) { factories =>
+				// 4.1: Results visualization
+				// The visualized image is generated asynchronously in order to avoid slowing the system
+				import utopia.genesis.util.Screen.ppi
+				val optimalImageSize = Size.square(6.cm.toPixels)
+				val visualizationP = resultsP
+					.mapAsync(Image.empty) {
+						case Some(results) => VisualizeHiddenHeight(results, optimalImageSize)
+						case None => Image.empty
+					}
+					.strongMap { _.current }
+				val visualizationLabel = factories(ViewImageLabel)(visualizationP)
+				visualizationLabel.addConstraint { original =>
+					if (original.optimal.isZero)
+						StackSize(optimalImageSize.width.downscaling.lowPriority, StackLength.any.lowPriority)
+					else
+						original
+				}
 				
-				// Updates the results when changing unit systems
-				unitTypeP.addContinuousListener { _ => lines.foreach { _.result.revalidate() } }
+				// 4.2: A vertical left-aligned stack with:
+				//      1. Distance to horizon
+				//      2. Distance to target
+				//      3. Target hidden height
+				//      4. Target visible height
+				val resultTexts = stackF.related.leading.build(Stack) { stackF =>
+					// Prepares factories for constructing the result labels
+					val rowF = stackF.related.row
+					val segmentGroup = SegmentGroup.rowsWithLayouts(Leading, Leading)
+					def resultLine(label: LocalizedString)(extractValue: HiddenHeightResults => Distance) = {
+						rowF.buildSegmented(Mixed, segmentGroup) { factories =>
+							val titleLabel = factories.next()(TextLabel)(label)
+							val valueLabel = factories.next()(ViewTextLabel)(resultsP,
+								DisplayFunction.noLocalization[Option[HiddenHeightResults]] {
+									case Some(results) => resultToString(extractValue(results), unitTypeP.value)
+									case None => "---"
+								})
+							
+							Pair(titleLabel, valueLabel) -> valueLabel
+						}
+					}
+					// Creates the result labels
+					val horizonLine = resultLine("Horizon distance:") { _.distanceToHorizon }
+					val targetLine = resultLine("Target distance:") { _.distanceToTarget }
+					val hiddenLine = resultLine("Hidden:") { _.hiddenLength }
+					val visibleLine = resultLine("Visible:") { _.visibleLength }
+					val lines = Vector(horizonLine, targetLine, hiddenLine, visibleLine)
+					
+					// Updates the results when changing unit systems
+					unitTypeP.addContinuousListener { _ => lines.foreach { _.result.revalidate() } }
+					
+					lines.map { _.parent }
+				}
 				
-				lines.map { _.parent }
+				Pair(visualizationLabel, resultTexts.parent)
 			}
 		}
 		

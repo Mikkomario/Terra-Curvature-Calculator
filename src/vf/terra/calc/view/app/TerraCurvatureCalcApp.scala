@@ -4,9 +4,7 @@ import utopia.firmament.context.base.StaticBaseContext
 import utopia.firmament.context.window.WindowContext
 import utopia.firmament.model.Margins
 import utopia.firmament.model.enumeration.WindowResizePolicy.UserAndProgram
-import utopia.flow.async.context.ThreadPool
 import utopia.flow.collection.immutable.range.NumericSpan
-import utopia.flow.util.logging.{Logger, SysErrLogger}
 import utopia.genesis.handling.action.{ActionLoop, ActorHandler}
 import utopia.genesis.handling.event.keyboard.KeyboardEvents
 import utopia.genesis.text.Font
@@ -20,8 +18,6 @@ import utopia.reach.container.wrapper.Framing
 import utopia.reach.context.{ReachWindowContext, StaticReachContentWindowContext}
 import utopia.reach.window.ReachWindow
 import vf.terra.calc.view.vc.CalculatorView
-
-import scala.concurrent.ExecutionContext
 
 /**
  * The main application of this project
@@ -40,9 +36,6 @@ object TerraCurvatureCalcApp extends App
 	
 	
 	// ATTRIBUTES   -----------------------
-	
-	private implicit val log: Logger = SysErrLogger
-	private implicit val exc: ExecutionContext = new ThreadPool("Terra-Calculator")
 	
 	private implicit val ppi: Ppi = Screen.ppi
 	private val cm = 1.cm.toPixels.round.toInt
